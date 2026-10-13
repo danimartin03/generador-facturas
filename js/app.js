@@ -526,9 +526,8 @@ async function duplicarFactura(id) {
   decirEstado('Copia de la factura ' + numeroCompleto(factura.serie, factura.numero) + ' lista para editar.');
 }
 
-async function nuevaFactura() {
-  if (!(await confirmarDescartar())) return;
-
+// Dejo el formulario como el de una factura nueva, sin preguntar nada
+function reiniciarFormulario() {
   idEditando = null;
   emisorCongelado = null;
   for (const id of ['campoClienteNombre', 'campoClienteNif', 'campoClienteDireccion', 'campoFechaOperacion', 'campoExencion', 'campoFormaPago', 'campoNotas', 'campoIrpfPorcentaje']) {
@@ -539,6 +538,11 @@ async function nuevaFactura() {
   vaciarLineas();
   iniciarFormulario();
   hayCambiosSinGuardar = false;
+}
+
+async function nuevaFactura() {
+  if (!(await confirmarDescartar())) return;
+  reiniciarFormulario();
   irALaFactura();
   decirEstado('Factura nueva.');
 }
@@ -693,6 +697,115 @@ async function borrarFactura(id) {
   titulo.focus();
 }
 
+// ---------- Copia de seguridad, ejemplo y borrado ----------
+
+// Cambio todo lo que hay por unos datos nuevos (de un archivo o de ejemplo) y lo dejo todo al día
+function sustituirTodo(datosNuevos) {
+  estado = datosNuevos;
+  reiniciarFormulario();
+  pintarEmisorEnFormulario(estado.emisor);
+  guardarTodo();
+  pintarListaFacturas();
+  pintarAvisoDeEdicion();
+  actualizar();
+}
+
+function mostrarErrorDeImportar(mensaje) {
+  porId('avisoImportar').textContent = mensaje;
+  porId('avisoImportar').hidden = mensaje === '';
+}
+
+// Para descargar un texto que he creado en memoria, me invento un enlace y le hago clic
+function descargarTexto(texto, nombreArchivo, tipo) {
+  const url = URL.createObjectURL(new Blob([texto], { type: tipo }));
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+  document.body.append(enlace);
+  enlace.click();
+  enlace.remove();
+  // Le doy un momento al navegador para que arranque la descarga antes de liberar la URL
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+function exportar() {
+  if (!hayDatos(estado)) {
+    mostrarErrorDeImportar('Todavía no hay nada que exportar.');
+    return;
+  }
+  mostrarErrorDeImportar('');
+  descargarTexto(exportarDatos(estado), 'facturas-' + fechaDeHoy() + '.json', 'application/json');
+  decirEstado('Copia de seguridad descargada.');
+}
+
+async function alElegirArchivo() {
+  const campo = porId('campoImportar');
+  const archivo = campo.files[0];
+  // Vacío el campo para que se pueda volver a elegir el mismo archivo
+  campo.value = '';
+  if (!archivo) return;
+
+  if (archivo.size > TAMANO_MAXIMO_ARCHIVO) {
+    mostrarErrorDeImportar('El archivo pesa demasiado para ser una copia de seguridad.');
+    return;
+  }
+  let texto = '';
+  try {
+    texto = await archivo.text();
+  } catch (error) {
+    mostrarErrorDeImportar('No he podido leer el archivo.');
+    return;
+  }
+
+  const resultado = importarDatos(texto);
+  if (!resultado.estado) {
+    mostrarErrorDeImportar(resultado.error);
+    return;
+  }
+  mostrarErrorDeImportar('');
+
+  // Importar sustituye lo que hay, así que pregunto antes si se puede perder algo
+  if (!(await confirmarDescartar())) return;
+  if (hayDatos(estado)) {
+    const pregunta = '¿Sustituir tus datos y tus ' + estado.facturas.length + ' facturas guardadas por las del archivo (' +
+      resultado.estado.facturas.length + ')? No se puede deshacer.';
+    if (!(await confirmar(pregunta, 'Sustituir'))) return;
+  }
+
+  sustituirTodo(resultado.estado);
+  decirEstado('Copia importada: ' + resultado.estado.facturas.length + ' facturas.');
+}
+
+async function cargarEjemplo() {
+  if (!(await confirmarDescartar())) return;
+  if (hayDatos(estado)) {
+    const pregunta = 'Los datos de ejemplo sustituirán tus datos y tus ' + estado.facturas.length + ' facturas guardadas. No se puede deshacer. ¿Continuar?';
+    if (!(await confirmar(pregunta, 'Sustituir'))) return;
+  }
+  sustituirTodo(Object.assign(crearDatosDeEjemplo(fechaDeHoy()), { descartadas: 0 }));
+  decirEstado('Datos de ejemplo cargados.');
+}
+
+async function borrarTodo() {
+  if (!hayDatos(estado) && !hayCambiosSinGuardar) {
+    decirEstado('No hay nada que borrar.');
+    return;
+  }
+  const pregunta = '¿Borrar tus datos y tus ' + estado.facturas.length + ' facturas de este navegador? No se puede deshacer. Si quieres conservarlas, exporta antes una copia.';
+  if (!(await confirmar(pregunta, 'Borrar todo'))) return;
+
+  borrarDatosGuardados();
+  estado = { emisor: emisorVacio(), facturas: [], descartadas: 0 };
+  reiniciarFormulario();
+  pintarEmisorEnFormulario(estado.emisor);
+  porId('avisoGuardado').hidden = true;
+  porId('avisoDanadas').hidden = true;
+  pintarListaFacturas();
+  pintarAvisoDeEdicion();
+  actualizar();
+  decirEstado('He borrado todos tus datos.');
+}
+
 // ---------- Mis datos y el logo ----------
 
 function pintarEmisorEnFormulario(emisor) {
@@ -839,6 +952,11 @@ function arrancar() {
   porId('botonPdf').addEventListener('click', descargarPdf);
   porId('botonDatosActuales').addEventListener('click', usarMisDatosActuales);
   porId('listaFacturas').addEventListener('click', alPulsarEnFacturas);
+  porId('botonExportar').addEventListener('click', exportar);
+  porId('botonImportar').addEventListener('click', function () { porId('campoImportar').click(); });
+  porId('campoImportar').addEventListener('change', alElegirArchivo);
+  porId('botonEjemplo').addEventListener('click', cargarEjemplo);
+  porId('botonBorrarTodo').addEventListener('click', borrarTodo);
 
   iniciarFormulario();
   pintarListaFacturas();

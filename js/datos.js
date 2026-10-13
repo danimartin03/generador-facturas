@@ -352,3 +352,70 @@ function leerEstado() {
   if (resultado.descartadas > 0) guardarDato(CLAVE_COPIA_DANADA, guardado);
   return resultado;
 }
+
+// ---------- Exportar e importar ----------
+
+const TAMANO_MAXIMO_ARCHIVO = 5 * 1024 * 1024; // 5 MB, de sobra para 500 facturas
+
+// Todo lo mío en un texto JSON. Le pongo delante el nombre de la página y una versión
+// para poder reconocer el archivo al importarlo.
+function exportarDatos(estado) {
+  return JSON.stringify({ app: NOMBRE_APP, version: 1, emisor: estado.emisor, facturas: estado.facturas }, null, 2);
+}
+
+// Paso el texto de un archivo a mis datos. Devuelvo { estado, error }.
+// OJO: aquí soy estricto. Si UNA factura no cuadra, rechazo el archivo entero, porque al
+// importar se sustituye todo y no quiero dejar a medias una copia de seguridad.
+function importarDatos(texto) {
+  let datos = null;
+  try {
+    datos = JSON.parse(texto);
+  } catch (error) {
+    return { estado: null, error: 'El archivo no es un JSON válido.' };
+  }
+
+  if (!esObjeto(datos) || datos.app !== NOMBRE_APP) {
+    return { estado: null, error: 'Este archivo no es una copia de seguridad de esta página.' };
+  }
+  if (datos.version !== 1) {
+    return { estado: null, error: 'Esta copia es de una versión que no sé leer.' };
+  }
+  if (!Array.isArray(datos.facturas) || datos.facturas.length > LIMITE_FACTURAS) {
+    return { estado: null, error: 'El archivo no tiene una lista de facturas válida (como mucho ' + LIMITE_FACTURAS + ').' };
+  }
+
+  const facturas = [];
+  const usados = new Set();
+  for (let i = 0; i < datos.facturas.length; i++) {
+    const factura = validarFactura(datos.facturas[i]);
+    if (!factura) {
+      return { estado: null, error: 'La factura ' + (i + 1) + ' del archivo tiene datos que no cuadran y no he importado nada.' };
+    }
+    const clave = factura.serie + '\u0000' + factura.numero;
+    if (usados.has(clave)) {
+      return { estado: null, error: 'Hay dos facturas con el número ' + numeroCompleto(factura.serie, factura.numero) + ' y no he importado nada.' };
+    }
+    usados.add(clave);
+    factura.id = i + 1;
+    facturas.push(factura);
+  }
+
+  return { estado: { emisor: validarEmisor(datos.emisor), facturas: facturas, descartadas: 0 }, error: '' };
+}
+
+// Borro lo que he guardado en el navegador (menos el tema)
+function borrarDatosGuardados() {
+  try {
+    localStorage.removeItem(CLAVE_DATOS);
+    localStorage.removeItem(CLAVE_COPIA_DANADA);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+// ¿Hay algo guardado que se pueda perder?
+function hayDatos(estado) {
+  return estado.facturas.length > 0 || estado.emisor.nombre !== '' || estado.emisor.nif !== '' ||
+    estado.emisor.direccion !== '' || estado.emisor.logo !== '';
+}
