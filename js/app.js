@@ -376,6 +376,10 @@ function actualizar() {
   pintarHoja(porId('hojaImpresa'), modelo, completas, totales);
   pintarRevision(revisarFactura(modelo, { facturas: estado.facturas, idEditando: idEditando }));
   pintarAyudaDelNif(modelo.emisor.nif);
+  // La ayuda del número enseña el número completo tal como queda ahora mismo
+  porId('ayudaNumero').textContent = modelo.numero === null
+    ? 'El número completo será la serie más el número, con tres cifras como mínimo (por ejemplo 2026-001).'
+    : 'El número completo será la serie más el número: ' + numeroCompleto(modelo.serie, modelo.numero) + '.';
 }
 
 // ---------- Lo que hay guardado ----------

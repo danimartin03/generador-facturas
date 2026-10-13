@@ -745,6 +745,13 @@ textarea {
   margin-left: auto;
 }
 
+/* Con importes enormes en una pantalla estrecha, dejo que las cifras bajen de línea
+   antes que salirse de la hoja */
+.hoja-totales .cifra {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .hoja-pie {
   display: grid;
   gap: 0.3em;
