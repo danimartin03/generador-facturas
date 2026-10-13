@@ -32,7 +32,7 @@ function importeDeLinea(cantidad, precio) {
 // cantidad y precio llegan ya como números, o como null si no se entendieron.
 function problemaDeLinea(cantidad, precio) {
   if (cantidad === null || cantidad <= 0 || cantidad > CANTIDAD_MAXIMA) return 'cantidad';
-  if (precio === null || precio > PRECIO_MAXIMO) return 'precio';
+  if (precio === null || precio < 0 || precio > PRECIO_MAXIMO) return 'precio';
   if (importeDeLinea(cantidad, precio) > IMPORTE_LINEA_MAXIMO) return 'importe';
   return '';
 }

@@ -41,6 +41,8 @@
       No he podido guardar los cambios en este navegador. Exporta tus datos a JSON para no perderlos.
     </p>
 
+    <p class="aviso" id="avisoDanadas" role="alert" hidden></p>
+
     <nav class="pestanas" id="pestanas" aria-label="Secciones">
       <button type="button" data-seccion="factura" aria-pressed="true">Factura</button>
       <button type="button" data-seccion="facturas" aria-pressed="false">Mis facturas</button>
@@ -53,7 +55,10 @@
 
       <div class="barra-factura">
         <button type="button" class="boton" id="botonNuevaFactura">Nueva factura</button>
-        <p class="edicion" id="textoEdicion" role="status" hidden></p>
+        <div class="edicion" id="avisoEdicion" hidden>
+          <p id="textoEdicion" role="status"></p>
+          <button type="button" class="boton boton-pequeno" id="botonDatosActuales" hidden>Usar mis datos actuales</button>
+        </div>
       </div>
 
       <!-- En el móvil no caben el formulario y la vista previa a la vez: con estos botones se elige -->
