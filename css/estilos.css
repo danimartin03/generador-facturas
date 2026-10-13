@@ -950,6 +950,56 @@ textarea {
   }
 }
 
+/* ---------- Al imprimir (y al guardar como PDF) ---------- */
+/* Pongo el margen de la página en 0 y el margen de verdad dentro de la hoja. Así el navegador
+   no tiene dónde escribir la fecha y la dirección de la página arriba y abajo. */
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  /* Todo lo de la página se esconde, menos la copia de la factura */
+  body > *:not(#zonaImpresion) {
+    display: none !important;
+  }
+
+  #zonaImpresion {
+    display: block !important;
+  }
+
+  /* Sin esto, el navegador quita los colores de fondo y las líneas de color al imprimir */
+  .hoja {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    /* Si la factura ocupa más de una página, el margen se repite en cada una */
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    min-height: 0;
+    padding: 15mm;
+    border: 0;
+    box-shadow: none;
+    font-size: 10pt;
+  }
+
+  /* En la tabla, la cabecera se repite en cada página y una línea no se parte por la mitad */
+  .hoja-lineas thead {
+    display: table-header-group;
+  }
+
+  .hoja-lineas tr,
+  .hoja-cliente,
+  .hoja-totales,
+  .hoja-pie {
+    break-inside: avoid;
+  }
+}
+
 /* ---------- Animaciones ---------- */
 /* Solo animo si la persona no ha pedido reducir el movimiento */
 @media (prefers-reduced-motion: no-preference) {

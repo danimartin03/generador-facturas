@@ -167,7 +167,10 @@
             <button type="button" class="boton boton-principal" id="botonGuardar" disabled>Guardar factura</button>
             <button type="button" class="boton" id="botonPdf" disabled>Descargar PDF</button>
           </div>
-          <p class="ayuda">En el diálogo de impresión elige «Guardar como PDF».</p>
+          <p class="ayuda">
+            Se abre el diálogo de impresión: elige «Guardar como PDF». Si salen arriba o abajo la fecha o la dirección de la página,
+            desmarca «Encabezados y pies de página».
+          </p>
         </div>
       </div>
     </section>
@@ -269,7 +272,9 @@
   </footer>
 
   <!-- Una copia de la factura que solo se ve al imprimir. Todo lo demás se esconde. -->
-  <div id="zonaImpresion" aria-hidden="true"></div>
+  <div id="zonaImpresion" aria-hidden="true">
+    <article class="hoja" id="hojaImpresa"></article>
+  </div>
 
   <!-- ============ Ventana: confirmar algo que no tiene vuelta atrás ============ -->
   <dialog class="ventana" id="dialogoConfirmar" aria-labelledby="textoConfirmar">

@@ -372,6 +372,8 @@ function actualizar() {
   pintarTotalesVivos(completas.length > 0, totales, modelo.irpf);
 
   pintarHoja(porId('hoja'), modelo, completas, totales);
+  // La misma factura otra vez, en la zona que solo se ve al imprimir
+  pintarHoja(porId('hojaImpresa'), modelo, completas, totales);
   pintarRevision(revisarFactura(modelo, { facturas: estado.facturas, idEditando: idEditando }));
   pintarAyudaDelNif(modelo.emisor.nif);
 }
@@ -587,6 +589,28 @@ function guardarFactura() {
   actualizar();
   decirEstado('Factura ' + numeroCompleto(factura.serie, factura.numero) + ' guardada.');
 }
+
+// ---------- PDF ----------
+
+const TITULO_DE_LA_PAGINA = document.title;
+
+// Descargar el PDF es imprimir la factura y elegir "Guardar como PDF". Lo que se imprime es
+// la copia de la hoja (mira el CSS de @media print): todo lo demás está escondido.
+function descargarPdf() {
+  window.print();
+}
+
+// El navegador propone como nombre del archivo el título de la página, así que, mientras
+// se imprime, la página se llama "Factura 2026-001". Se usan estos dos eventos porque saltan
+// también cuando alguien imprime con Ctrl+P sin pulsar mi botón.
+window.addEventListener('beforeprint', function () {
+  const modelo = leerFormulario();
+  if (modelo.numero !== null) document.title = 'Factura ' + numeroCompleto(modelo.serie, modelo.numero);
+});
+
+window.addEventListener('afterprint', function () {
+  document.title = TITULO_DE_LA_PAGINA;
+});
 
 // ---------- Mis facturas ----------
 
@@ -812,6 +836,7 @@ function arrancar() {
 
   porId('botonNuevaFactura').addEventListener('click', nuevaFactura);
   porId('botonGuardar').addEventListener('click', guardarFactura);
+  porId('botonPdf').addEventListener('click', descargarPdf);
   porId('botonDatosActuales').addEventListener('click', usarMisDatosActuales);
   porId('listaFacturas').addEventListener('click', alPulsarEnFacturas);
 
