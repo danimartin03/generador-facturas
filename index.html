@@ -108,6 +108,8 @@
             <ul class="lineas" id="listaLineas"></ul>
             <button type="button" class="boton" id="botonAnadirLinea">Añadir línea</button>
             <p class="ayuda">Usa la coma para los decimales (1,5 horas, 12,50 €).</p>
+            <!-- Los totales a la vista mientras se rellena, sobre todo para el móvil, donde no se ve la factura -->
+            <div class="totales-vivo" id="totalesVivo"></div>
           </fieldset>
 
           <fieldset class="bloque">
@@ -274,6 +276,37 @@
       </div>
     </form>
   </dialog>
+
+  <!-- El molde de cada línea de la factura: lo clono desde JS -->
+  <template id="plantillaLinea">
+    <li class="linea">
+      <div class="linea-concepto">
+        <label>Concepto</label>
+        <input type="text" data-campo="concepto" maxlength="200">
+      </div>
+      <div>
+        <label>Cantidad</label>
+        <input type="text" data-campo="cantidad" inputmode="decimal" maxlength="12">
+      </div>
+      <div>
+        <label>Precio (€)</label>
+        <input type="text" data-campo="precio" inputmode="decimal" maxlength="14">
+      </div>
+      <div class="linea-iva">
+        <label>IVA</label>
+        <select data-campo="iva">
+          <option value="21">21 %</option>
+          <option value="10">10 %</option>
+          <option value="4">4 %</option>
+          <option value="0">Exento</option>
+        </select>
+      </div>
+      <div class="linea-importe">
+        <span>Importe: <output data-campo="importe">—</output></span>
+        <button type="button" class="boton boton-pequeno" data-accion="quitar">Quitar</button>
+      </div>
+    </li>
+  </template>
 
   <script src="js/dinero.js" defer></script>
   <script src="js/calculos.js" defer></script>

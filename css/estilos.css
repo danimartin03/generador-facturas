@@ -464,6 +464,10 @@ textarea {
   font-size: 0.8rem;
 }
 
+.linea-iva {
+  grid-column: 1 / -1;
+}
+
 .linea-importe {
   display: flex;
   align-items: center;
@@ -477,6 +481,66 @@ textarea {
 .linea-importe output {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Totales (en el formulario y en la factura) ---------- */
+.totales-vivo {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 2px solid var(--tinta);
+}
+
+.totales table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.totales th,
+.totales td {
+  padding: 0.25rem 0.4rem;
+  border-bottom: 1px solid var(--borde);
+  text-align: left;
+}
+
+.totales th:not(:first-child),
+.totales td.cifra {
+  text-align: right;
+}
+
+.totales .cifra,
+.totales-resumen dd {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.totales-resumen {
+  margin-top: 0.5rem;
+}
+
+.totales-resumen div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.2rem 0.4rem;
+}
+
+.totales-resumen dd {
+  margin: 0;
+  text-align: right;
+}
+
+.totales-resumen .total {
+  margin-top: 0.3rem;
+  padding-top: 0.4rem;
+  border-top: 2px solid var(--tinta);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.sin-totales {
+  color: var(--tinta-suave);
+  font-size: 0.9rem;
 }
 
 /* ---------- Faltan y avisos ---------- */
@@ -656,11 +720,11 @@ textarea {
   }
 
   .linea {
-    grid-template-columns: 1.2fr 1.4fr 1.2fr 1.6fr;
+    grid-template-columns: 1fr 1.3fr 1.1fr;
   }
 
-  .linea-importe {
-    grid-column: 1 / -1;
+  .linea-iva {
+    grid-column: auto;
   }
 
   .ficha {
