@@ -588,6 +588,175 @@ textarea {
   flex: 1 1 10rem;
 }
 
+/* ---------- La hoja de la factura ---------- */
+/* El marco mide cuánto sitio hay, y la hoja ajusta el tamaño de la letra a ese sitio:
+   así se lee bien tanto a 360 px como en escritorio, y siempre con la forma de un folio. */
+.hoja-marco {
+  container-type: inline-size;
+  margin-bottom: 0.5rem;
+}
+
+/* La hoja es papel: siempre blanca y con tinta oscura, también en el tema oscuro.
+   Por eso vuelvo a definir aquí los colores que usan sus piezas. */
+.hoja {
+  --tinta: #1b1f1e;
+  --tinta-suave: #52605d;
+  --borde: #cdd6d3;
+  --acento: #0d5c75;
+  --sello: #8c1f3a;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2em;
+  min-height: calc(100cqw * 297 / 210);
+  padding: clamp(0.8rem, 5cqw, 2.4rem);
+  border: 1px solid var(--borde);
+  background: #ffffff;
+  color: var(--tinta);
+  box-shadow: var(--sombra);
+  font-size: clamp(0.66rem, 2.2cqw, 0.9rem);
+  line-height: 1.4;
+}
+
+.hoja h2,
+.hoja h3 {
+  margin: 0;
+}
+
+.hoja-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1em;
+}
+
+.hoja-emisor {
+  flex: 1 1 14em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.hoja-logo {
+  display: block;
+  max-width: 9em;
+  max-height: 5em;
+  margin-bottom: 0.6em;
+  object-fit: contain;
+}
+
+.hoja-nombre {
+  font-size: 1.3em;
+  font-weight: 800;
+}
+
+.hoja-titulo {
+  flex: 0 1 16em;
+  text-align: right;
+}
+
+.hoja-titulo h2 {
+  margin-bottom: 0.4em;
+  color: var(--acento);
+  font-size: 2em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hoja-datos div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+}
+
+.hoja-datos dt {
+  color: var(--tinta-suave);
+}
+
+.hoja-datos dd {
+  margin: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hoja-cliente {
+  padding: 0.7em 0.9em;
+  border: 1px solid var(--borde);
+  border-left: 0.4em solid var(--acento);
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+.hoja-cliente h3 {
+  margin-bottom: 0.3em;
+  color: var(--tinta-suave);
+  font-size: 0.8em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hoja-nombre-cliente {
+  font-weight: 800;
+}
+
+.direccion {
+  white-space: pre-line;
+}
+
+.hoja-lineas {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.hoja-lineas th {
+  padding: 0.45em 0.5em;
+  border-bottom: 2px solid var(--acento);
+  color: var(--acento);
+  font-size: 0.8em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.hoja-lineas td {
+  padding: 0.5em;
+  border-bottom: 1px solid var(--borde);
+  vertical-align: top;
+}
+
+.hoja-lineas .num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hoja-lineas .concepto {
+  overflow-wrap: anywhere;
+}
+
+.hoja-totales {
+  width: min(100%, 24em);
+  margin-left: auto;
+}
+
+.hoja-pie {
+  display: grid;
+  gap: 0.3em;
+  margin-top: auto;
+  padding-top: 0.8em;
+  border-top: 1px solid var(--borde);
+  color: var(--tinta-suave);
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+.hoja-pie:empty {
+  display: none;
+}
+
+.falta {
+  color: var(--sello);
+  font-style: italic;
+}
+
 /* ---------- Mis facturas ---------- */
 .lista-facturas {
   display: grid;

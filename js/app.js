@@ -175,8 +175,13 @@ function leerLinea(fila) {
   };
 }
 
+// Cada línea lleva también su posición (1, 2, 3...) para poder decir "Línea 2: ..."
 function leerLineas() {
-  return Array.from(porId('listaLineas').children).map(leerLinea);
+  return Array.from(porId('listaLineas').children).map(function (fila, posicion) {
+    const linea = leerLinea(fila);
+    linea.posicion = posicion + 1;
+    return linea;
+  });
 }
 
 // Marco en rojo los campos que no se entienden y escribo el importe de la línea.
@@ -233,26 +238,110 @@ function pintarTotalesVivos(hayLineas, totales, irpf) {
   zona.replaceChildren(crearBloqueDeTotales(totales, irpf));
 }
 
+// ---------- Leer todo el formulario ----------
+
+// El logo elegido, como texto data:image/... (o '' si no hay). Se guarda con "Mis datos".
+let logoActual = '';
+
+// El número tiene que ser un entero entre 1 y 999999. Si no, null.
+function leerNumero() {
+  const texto = porId('campoNumero').value.trim();
+  if (!/^\d{1,6}$/.test(texto)) return null;
+  const numero = Number(texto);
+  return numero >= 1 ? numero : null;
+}
+
+function leerEmisor() {
+  return {
+    nombre: porId('campoEmisorNombre').value.trim(),
+    nif: porId('campoEmisorNif').value.trim(),
+    direccion: porId('campoEmisorDireccion').value.trim(),
+    email: porId('campoEmisorEmail').value.trim(),
+    telefono: porId('campoEmisorTelefono').value.trim(),
+    iban: porId('campoEmisorIban').value.trim(),
+    logo: logoActual
+  };
+}
+
+// Recojo todo lo que hay escrito en una sola "foto" de la factura.
+// Con ella se calcula, se dibuja la hoja y se revisa lo que falta.
+function leerFormulario() {
+  return {
+    serie: porId('campoSerie').value.trim(),
+    numero: leerNumero(),
+    fecha: porId('campoFecha').value,
+    fechaOperacion: porId('campoFechaOperacion').value,
+    emisor: leerEmisor(),
+    cliente: {
+      nombre: porId('campoClienteNombre').value.trim(),
+      nif: porId('campoClienteNif').value.trim(),
+      direccion: porId('campoClienteDireccion').value.trim()
+    },
+    lineas: leerLineas(),
+    irpf: leerIrpf(),
+    exencion: porId('campoExencion').value.trim(),
+    formaPago: porId('campoFormaPago').value.trim(),
+    notas: porId('campoNotas').value.trim()
+  };
+}
+
+// Valores con los que arranca una factura nueva
+function iniciarFormulario() {
+  porId('campoSerie').value = String(new Date().getFullYear()) + '-';
+  porId('campoNumero').value = '1';
+  porId('campoFecha').value = fechaDeHoy();
+}
+
+// ---------- Lo que falta y los avisos ----------
+
+function pintarRevision(revision) {
+  porId('resumenFaltan').hidden = revision.faltan.length === 0;
+  porId('listaFaltan').replaceChildren(...revision.faltan.map(function (texto) {
+    return crearElemento('li', '', texto);
+  }));
+  porId('listaAvisos').replaceChildren(...revision.avisos.map(function (texto) {
+    return crearElemento('li', '', texto);
+  }));
+
+  // Sin lo obligatorio no se puede guardar ni descargar
+  const incompleta = revision.faltan.length > 0;
+  porId('botonGuardar').disabled = incompleta;
+  porId('botonPdf').disabled = incompleta;
+}
+
+// Debajo del NIF de "Mis datos" digo si parece válido
+function pintarAyudaDelNif(nif) {
+  let texto = '';
+  if (nif !== '') {
+    const tipo = tipoDeNif(nif);
+    texto = tipo !== '' ? 'Parece un ' + tipo + ' válido.' : 'No parece un NIF válido. Revisa los números y la letra.';
+  }
+  porId('ayudaEmisorNif').textContent = texto;
+}
+
 // ---------- Recalcular todo ----------
 
 // Se llama cada vez que cambia algo del formulario: vuelve a leerlo y a calcularlo todo.
 // Son pocas cuentas, así que no hace falta ser más listo que esto.
 function actualizar() {
-  const lineas = leerLineas();
-  const completas = lineas.filter(function (linea) { return linea.completa; });
-  const irpf = leerIrpf();
-  const totales = calcularFactura(completas, irpf.valor);
+  const modelo = leerFormulario();
+  const completas = modelo.lineas.filter(function (linea) { return linea.completa; });
+  const totales = calcularFactura(completas, modelo.irpf.valor);
 
   // totales.importes va en el mismo orden que las líneas completas
   let posicion = 0;
-  for (const linea of lineas) {
+  for (const linea of modelo.lineas) {
     pintarLinea(linea, linea.completa ? totales.importes[posicion++] : null);
   }
 
-  porId('campoIrpfPorcentaje').setAttribute('aria-invalid', !irpf.correcto);
+  porId('campoIrpfPorcentaje').setAttribute('aria-invalid', !modelo.irpf.correcto);
   // El motivo de la exención solo hace falta si hay alguna línea exenta
   porId('grupoExencion').hidden = !completas.some(function (linea) { return linea.iva === 0; });
-  pintarTotalesVivos(completas.length > 0, totales, irpf);
+  pintarTotalesVivos(completas.length > 0, totales, modelo.irpf);
+
+  pintarHoja(porId('hoja'), modelo, completas, totales);
+  pintarRevision(revisarFactura(modelo));
+  pintarAyudaDelNif(modelo.emisor.nif);
 }
 
 // ---------- Arranque ----------
@@ -275,5 +364,9 @@ function arrancar() {
   // El evento input salta con cualquier campo del formulario, así me vale un solo listener
   porId('formularioFactura').addEventListener('input', actualizar);
   porId('formularioFactura').addEventListener('submit', function (evento) { evento.preventDefault(); });
+  // Los datos del emisor están en otra pestaña, pero salen en la factura
+  porId('formularioDatos').addEventListener('input', actualizar);
+  porId('formularioDatos').addEventListener('submit', function (evento) { evento.preventDefault(); });
+  iniciarFormulario();
   actualizar();
 }
