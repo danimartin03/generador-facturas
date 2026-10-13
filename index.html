@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Generador de facturas</title>
+  <meta name="description" content="Prepara facturas de autónomo en España con IVA y retención de IRPF, y descárgalas en PDF. Herramienta de apoyo: todo se hace en tu navegador.">
+  <link rel="stylesheet" href="css/estilos.css">
+
+  <!-- Pongo el tema antes de pintar la página para que no parpadee al cargar -->
+  <script>
+    (function () {
+      var tema = null;
+      try { tema = JSON.parse(localStorage.getItem('generador-facturas:tema')); } catch (error) { /* sin localStorage no pasa nada */ }
+      if (tema !== 'claro' && tema !== 'oscuro') {
+        tema = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+      }
+      document.documentElement.dataset.tema = tema;
+    })();
+  </script>
+</head>
+<body>
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
+
+  <header class="cabecera">
+    <p class="marca"><span class="marca-sello" aria-hidden="true">€</span>Generador de facturas</p>
+    <button type="button" class="boton boton-pequeno" id="botonTema" aria-pressed="false">Tema oscuro</button>
+  </header>
+
+  <main id="contenido">
+    <h1>Prepara tu factura</h1>
+
+    <p class="aviso-legal" role="note">
+      <strong>Herramienta de apoyo, no una herramienta oficial.</strong>
+      Sirve para practicar y preparar borradores de facturas de autónomo en España. No sustituye el asesoramiento fiscal
+      ni es un sistema de facturación homologado (VERI*FACTU): para emitir facturas oficiales, consulta a tu gestor.
+      Tus datos solo se guardan en este navegador.
+    </p>
+
+    <p class="aviso" id="avisoGuardado" role="alert" hidden>
+      No he podido guardar los cambios en este navegador. Exporta tus datos a JSON para no perderlos.
+    </p>
+
+    <nav class="pestanas" id="pestanas" aria-label="Secciones">
+      <button type="button" data-seccion="factura" aria-pressed="true">Factura</button>
+      <button type="button" data-seccion="facturas" aria-pressed="false">Mis facturas</button>
+      <button type="button" data-seccion="datos" aria-pressed="false">Mis datos</button>
+    </nav>
+
+    <!-- ============ Sección 1: la factura que estoy preparando ============ -->
+    <section id="seccionFactura" aria-labelledby="tituloFactura">
+      <h2 id="tituloFactura" class="solo-lectores">Factura</h2>
+
+      <div class="barra-factura">
+        <button type="button" class="boton" id="botonNuevaFactura">Nueva factura</button>
+        <p class="edicion" id="textoEdicion" role="status" hidden></p>
+      </div>
+
+      <!-- En el móvil no caben el formulario y la vista previa a la vez: con estos botones se elige -->
+      <div class="vistas" id="vistas" role="group" aria-label="Qué ver">
+        <button type="button" data-vista="datos" aria-pressed="true">Rellenar</button>
+        <button type="button" data-vista="vista" aria-pressed="false">Vista previa</button>
+      </div>
+
+      <div class="zonas" id="zonas" data-vista="datos">
+        <form class="columna-datos" id="formularioFactura" novalidate autocomplete="off">
+          <fieldset class="bloque">
+            <legend>Factura</legend>
+            <div class="fila-tres">
+              <div class="campo">
+                <label for="campoSerie">Serie</label>
+                <input type="text" id="campoSerie" maxlength="10">
+              </div>
+              <div class="campo">
+                <label for="campoNumero">Número</label>
+                <input type="text" id="campoNumero" inputmode="numeric" maxlength="6" aria-describedby="ayudaNumero">
+              </div>
+              <div class="campo">
+                <label for="campoFecha">Fecha</label>
+                <input type="date" id="campoFecha">
+              </div>
+            </div>
+            <p class="ayuda" id="ayudaNumero">El número completo será la serie más el número: 2026-001.</p>
+            <div class="campo">
+              <label for="campoFechaOperacion">Fecha de la operación (solo si es distinta de la fecha de la factura)</label>
+              <input type="date" id="campoFechaOperacion">
+            </div>
+          </fieldset>
+
+          <fieldset class="bloque">
+            <legend>Cliente</legend>
+            <div class="campo">
+              <label for="campoClienteNombre">Nombre o razón social</label>
+              <input type="text" id="campoClienteNombre" maxlength="100">
+            </div>
+            <div class="campo">
+              <label for="campoClienteNif">NIF (obligatorio si el cliente es empresa o profesional)</label>
+              <input type="text" id="campoClienteNif" maxlength="20" autocapitalize="characters">
+            </div>
+            <div class="campo">
+              <label for="campoClienteDireccion">Dirección</label>
+              <textarea id="campoClienteDireccion" rows="2" maxlength="200"></textarea>
+            </div>
+          </fieldset>
+
+          <fieldset class="bloque">
+            <legend>Líneas</legend>
+            <ul class="lineas" id="listaLineas"></ul>
+            <button type="button" class="boton" id="botonAnadirLinea">Añadir línea</button>
+            <p class="ayuda">Usa la coma para los decimales (1,5 horas, 12,50 €).</p>
+          </fieldset>
+
+          <fieldset class="bloque">
+            <legend>Impuestos</legend>
+            <label class="casilla" for="campoIrpf">
+              <input type="checkbox" id="campoIrpf">
+              Aplicar retención de IRPF
+            </label>
+            <div class="campo" id="grupoIrpf" hidden>
+              <label for="campoIrpfPorcentaje">Porcentaje de retención</label>
+              <div class="fila-irpf">
+                <input type="text" id="campoIrpfPorcentaje" inputmode="decimal" maxlength="6" aria-describedby="ayudaIrpf">
+                <button type="button" class="boton boton-pequeno" data-irpf="15">15 %</button>
+                <button type="button" class="boton boton-pequeno" data-irpf="7">7 %</button>
+              </div>
+              <p class="ayuda" id="ayudaIrpf">El 15 % es el general. El 7 % se aplica a profesionales de nuevo inicio durante el año de inicio y los dos siguientes. Consulta tu caso con tu gestor.</p>
+            </div>
+            <div class="campo" id="grupoExencion" hidden>
+              <label for="campoExencion">Motivo de la exención de IVA</label>
+              <input type="text" id="campoExencion" maxlength="200" placeholder="Disposición que la ampara">
+              <p class="ayuda">Es obligatorio citarlo en las operaciones exentas.</p>
+            </div>
+          </fieldset>
+
+          <fieldset class="bloque">
+            <legend>Pago y notas (opcional)</legend>
+            <div class="campo">
+              <label for="campoFormaPago">Forma de pago</label>
+              <input type="text" id="campoFormaPago" maxlength="200" placeholder="Transferencia a ES00 0000 0000 0000 0000 0000">
+            </div>
+            <div class="campo">
+              <label for="campoNotas">Notas</label>
+              <textarea id="campoNotas" rows="3" maxlength="500"></textarea>
+            </div>
+          </fieldset>
+        </form>
+
+        <div class="columna-vista">
+          <div class="resumen-faltan" id="resumenFaltan" hidden>
+            <h3>Para guardarla o descargarla falta:</h3>
+            <ul id="listaFaltan"></ul>
+          </div>
+          <ul class="avisos" id="listaAvisos" aria-live="polite"></ul>
+
+          <div class="hoja-marco">
+            <article class="hoja" id="hoja" aria-label="Vista previa de la factura"></article>
+          </div>
+
+          <div class="acciones">
+            <button type="button" class="boton boton-principal" id="botonGuardar" disabled>Guardar factura</button>
+            <button type="button" class="boton" id="botonPdf" disabled>Descargar PDF</button>
+          </div>
+          <p class="ayuda">En el diálogo de impresión elige «Guardar como PDF».</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Sección 2: las facturas guardadas ============ -->
+    <section id="seccionFacturas" aria-labelledby="tituloFacturas" hidden>
+      <h2 id="tituloFacturas">Mis facturas</h2>
+      <p class="vacio" id="sinFacturas">Todavía no has guardado ninguna factura.</p>
+      <ul class="lista-facturas" id="listaFacturas"></ul>
+
+      <div class="bloque copia">
+        <h3>Copia de seguridad</h3>
+        <p class="ayuda">El archivo JSON lleva tus datos fiscales y todas tus facturas: guárdalo en un sitio seguro. Al importar, se sustituye todo lo que hay ahora.</p>
+        <div class="acciones">
+          <button type="button" class="boton" id="botonExportar">Exportar a JSON</button>
+          <button type="button" class="boton" id="botonImportar">Importar desde JSON</button>
+          <input type="file" id="campoImportar" accept=".json,application/json" hidden>
+        </div>
+        <p class="error" id="avisoImportar" role="alert" hidden></p>
+      </div>
+    </section>
+
+    <!-- ============ Sección 3: mis datos de emisor ============ -->
+    <section id="seccionDatos" aria-labelledby="tituloDatos" hidden>
+      <h2 id="tituloDatos">Mis datos</h2>
+      <p class="ayuda">Salen en todas tus facturas. Se guardan solos en este navegador, y cada factura guardada se queda con los datos que tenías cuando la hiciste.</p>
+
+      <form class="bloque" id="formularioDatos" novalidate autocomplete="off">
+        <div class="campo">
+          <label for="campoEmisorNombre">Nombre o razón social</label>
+          <input type="text" id="campoEmisorNombre" maxlength="100">
+        </div>
+        <div class="campo">
+          <label for="campoEmisorNif">NIF</label>
+          <input type="text" id="campoEmisorNif" maxlength="20" autocapitalize="characters" aria-describedby="ayudaEmisorNif">
+          <p class="ayuda" id="ayudaEmisorNif" role="status"></p>
+        </div>
+        <div class="campo">
+          <label for="campoEmisorDireccion">Dirección</label>
+          <textarea id="campoEmisorDireccion" rows="2" maxlength="200"></textarea>
+        </div>
+        <div class="fila-doble">
+          <div class="campo">
+            <label for="campoEmisorEmail">Email (opcional)</label>
+            <input type="email" id="campoEmisorEmail" maxlength="100">
+          </div>
+          <div class="campo">
+            <label for="campoEmisorTelefono">Teléfono (opcional)</label>
+            <input type="tel" id="campoEmisorTelefono" maxlength="30">
+          </div>
+        </div>
+        <div class="campo">
+          <label for="campoEmisorIban">IBAN (opcional)</label>
+          <input type="text" id="campoEmisorIban" maxlength="40" autocapitalize="characters">
+        </div>
+
+        <fieldset class="campo grupo-logo">
+          <legend>Logo (opcional)</legend>
+          <div class="logo-fila">
+            <img id="imagenLogo" class="logo-muestra" alt="Tu logo" hidden>
+            <div>
+              <div class="acciones">
+                <button type="button" class="boton" id="botonLogo">Elegir imagen</button>
+                <button type="button" class="boton" id="botonQuitarLogo" hidden>Quitar logo</button>
+                <input type="file" id="campoLogo" accept="image/png,image/jpeg,image/webp" hidden>
+              </div>
+              <p class="ayuda">PNG, JPG o WebP de hasta 1 MB. Se reduce y se guarda solo en este navegador.</p>
+              <p class="error" id="errorLogo" role="alert" hidden></p>
+            </div>
+          </div>
+        </fieldset>
+      </form>
+
+      <div class="bloque copia">
+        <h3>Datos de ejemplo y borrado</h3>
+        <p class="ayuda">Los datos de ejemplo son ficticios. Si ya tienes datos, se pide confirmación antes de sustituirlos.</p>
+        <div class="acciones">
+          <button type="button" class="boton" id="botonEjemplo">Cargar datos de ejemplo</button>
+          <button type="button" class="boton boton-peligro" id="botonBorrarTodo">Borrar todos mis datos</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Aquí voy escribiendo lo que pasa para que lo lean los lectores de pantalla -->
+    <p class="solo-lectores" id="mensajeEstado" role="status" aria-live="polite"></p>
+  </main>
+
+  <footer class="pie">
+    <p>Hecho por Daniel Martín Pérez · <a href="https://github.com/danimartin03/generador-facturas">Código en GitHub</a></p>
+    <p>
+      Contenido de la factura según el
+      <a href="https://www.boe.es/buscar/act.php?id=BOE-A-2012-14696">Real Decreto 1619/2012</a> (BOE).
+      Más sobre
+      <a href="https://sede.agenciatributaria.gob.es/Sede/iva/sistemas-informaticos-facturacion-verifactu.html">VERI*FACTU</a>
+      y los
+      <a href="https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/folleto-actividades-economicas/7-otras-obligaciones-fiscales-retenciones/7_1-cuadro-relacion-tipos-retencion-porcentaje.html">tipos de retención</a>
+      en la web de la Agencia Tributaria.
+    </p>
+  </footer>
+
+  <!-- Una copia de la factura que solo se ve al imprimir. Todo lo demás se esconde. -->
+  <div id="zonaImpresion" aria-hidden="true"></div>
+
+  <!-- ============ Ventana: confirmar algo que no tiene vuelta atrás ============ -->
+  <dialog class="ventana" id="dialogoConfirmar" aria-labelledby="textoConfirmar">
+    <form method="dialog">
+      <p class="pregunta" id="textoConfirmar"></p>
+      <div class="ventana-botones">
+        <button type="submit" class="boton" value="cancelar">Cancelar</button>
+        <button type="submit" class="boton boton-peligro" value="aceptar" id="botonConfirmar">Aceptar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="js/dinero.js" defer></script>
+  <script src="js/calculos.js" defer></script>
+  <script src="js/nif.js" defer></script>
+  <script src="js/datos.js" defer></script>
+  <script src="js/ejemplo.js" defer></script>
+  <script src="js/factura.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>
